@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from amazon_recommender.data import (
     encode_interactions,
     load_metadata,
     load_reviews,
+    temporal_train_test_split_interactions,
     train_test_split_interactions,
 )
 from amazon_recommender.metrics import format_metrics, regression_metrics
@@ -37,6 +39,17 @@ def main() -> None:
     parser.add_argument("--limit-reviews", type=int, default=None)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument(
+        "--split-strategy",
+        choices=("temporal", "random"),
+        default="temporal",
+        help="Use a future-like temporal holdout by default.",
+    )
+    parser.add_argument(
+        "--metrics-output",
+        type=Path,
+        default=Path("reports/evaluation.json"),
+    )
     parser.add_argument("--top-n", type=int, default=5)
     args = parser.parse_args()
 
@@ -51,11 +64,16 @@ def main() -> None:
         metadata = load_metadata(args.metadata_path, asin_filter=set(reviews["asin"]))
 
     encoded = encode_interactions(reviews, metadata=metadata)
-    train, test = train_test_split_interactions(
-        encoded.interactions,
-        test_size=args.test_size,
-        random_state=args.random_state,
-    )
+    if args.split_strategy == "temporal":
+        train, test = temporal_train_test_split_interactions(
+            encoded.interactions, test_size=args.test_size
+        )
+    else:
+        train, test = train_test_split_interactions(
+            encoded.interactions,
+            test_size=args.test_size,
+            random_state=args.random_state,
+        )
 
     models = {
         "popularity": PopularityRecommender(min_rating_count=1, prior_weight=5.0),
@@ -73,10 +91,26 @@ def main() -> None:
     print(f"Train/test split: {len(train):,}/{len(test):,}")
     print()
 
+    model_metrics: dict[str, dict[str, float]] = {}
     for name, model in models.items():
         model.fit(train)
         metrics = regression_metrics(model, test)
+        model_metrics[name] = metrics
         print(f"{name}: {format_metrics(metrics)}")
+
+    evaluation = {
+        "split_strategy": args.split_strategy,
+        "test_size": args.test_size,
+        "ratings": len(encoded.interactions),
+        "users": len(encoded.user_encoder),
+        "products": len(encoded.item_encoder),
+        "train_rows": len(train),
+        "test_rows": len(test),
+        "models": model_metrics,
+    }
+    args.metrics_output.parent.mkdir(parents=True, exist_ok=True)
+    args.metrics_output.write_text(json.dumps(evaluation, indent=2), encoding="utf-8")
+    print(f"Wrote evaluation evidence: {args.metrics_output}")
 
     first_user_id = int(encoded.interactions["user_id"].iloc[0])
     print(f"\nTop {args.top_n} SVD recommendations for user_id={first_user_id}:")

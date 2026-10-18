@@ -175,6 +175,28 @@ def train_test_split_interactions(
     return train, test
 
 
+def temporal_train_test_split_interactions(
+    interactions: pd.DataFrame,
+    test_size: float = 0.2,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Hold out the latest interactions to better match future serving behavior."""
+
+    if not 0 < test_size < 1:
+        raise ValueError("test_size must be between 0 and 1")
+    if len(interactions) < 2:
+        raise ValueError("at least two interactions are required")
+    if "unixReviewTime" not in interactions:
+        raise ValueError("unixReviewTime is required for a temporal split")
+
+    ordered = interactions.sort_values("unixReviewTime", kind="stable")
+    test_count = max(1, int(round(len(ordered) * test_size)))
+    train = ordered.iloc[:-test_count].reset_index(drop=True)
+    test = ordered.iloc[-test_count:].reset_index(drop=True)
+    train.attrs.update(interactions.attrs)
+    test.attrs.update(interactions.attrs)
+    return train, test
+
+
 def _first_category(value: object) -> str | None:
     if isinstance(value, list) and value:
         first = value[0]

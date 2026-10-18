@@ -8,7 +8,8 @@ __pycache__/
 
 data/raw/
 data/processed/
-reports/
+reports/*
+!reports/baseline_random_split.json
 models/
 
 .DS_Store

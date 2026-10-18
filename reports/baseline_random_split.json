@@ -1,0 +1,16 @@
+{
+  "evidence_status": "committed_historical_baseline",
+  "split_strategy": "random",
+  "test_size": 0.2,
+  "random_state": 42,
+  "ratings": 4092,
+  "users": 991,
+  "products": 85,
+  "models": {
+    "popularity": {"mae": 0.3344, "rmse": 0.6779, "coverage": 1.0},
+    "user_knn": {"mae": 0.0926, "rmse": 0.3838, "coverage": 1.0},
+    "item_knn": {"mae": 0.0952, "rmse": 0.3154, "coverage": 1.0},
+    "svd": {"mae": 0.0967, "rmse": 0.3899, "coverage": 1.0}
+  },
+  "warning": "Use temporal evaluation and ranking metrics before an online serving decision."
+}

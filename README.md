@@ -79,6 +79,11 @@ Train and evaluate the recommenders:
 python scripts/train.py
 ```
 
+The default evaluation holds out the latest interactions to better approximate
+future serving behavior and writes machine-readable evidence to
+`reports/evaluation.json`. Use `--split-strategy random` only to reproduce the
+historical baseline below.
+
 Run tests:
 
 ```bash
@@ -87,7 +92,7 @@ python -m pytest
 
 ## Baseline Results
 
-After removing duplicate reviewer/product pairs, the current pipeline evaluates
+After removing duplicate reviewer/product pairs, the historical baseline evaluates
 4,092 ratings from 991 users and 85 products with an 80/20 random split.
 
 | Model | MAE | RMSE | Coverage |
@@ -104,6 +109,8 @@ user.
 
 - `data/`, `reports/`, and model artifacts are ignored so large generated files
   do not get committed.
+- `reports/baseline_random_split.json` is committed as the reproducible evidence
+  snapshot for the documented historical result.
 - The original Colab notebook remains unchanged.
 - The production path is designed for repeatable local runs and CI validation.
 
